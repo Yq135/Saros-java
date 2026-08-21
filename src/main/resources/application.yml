@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: saros
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    # 阶段二与阶段三共用同一个 PG（pgvector 已启用、512 维），连接参数走环境变量
+    url: jdbc:postgresql://${PG_HOST:127.0.0.1}:${PG_PORT:5432}/${PG_DB:saros_db}
+    username: ${PG_USER:postgres}
+    password: ${PG_PASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  mvc:
+    async:
+      # SSE 长连接（问答流式/视频任务轮询）需要较长超时
+      request-timeout: 300000
+
+server:
+  port: 8080
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# Saros 自定义配置（键名与阶段二 .env 对齐，环境变量同名覆盖；设置页热刷新项见 PLAN.md §5.6）
+saros:
+  llm:
+    base-url: ${LLM_BASE_URL:https://api.deepseek.com/v1}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:deepseek-chat}
+  asr:
+    base-url: ${ASR_BASE_URL:http://100.100.61.45:9001/v1}
+    api-key: ${ASR_API_KEY:}
+    model: ${ASR_MODEL:mlx-community/Qwen3-ASR-1.7B-bf16}
+  cookie-path: ${COOKIE_PATH:data/.cookies.txt}
+  skip-subtitle: ${SKIP_SUBTITLE:false}
+  max-video-height: ${MAX_VIDEO_HEIGHT:720}
+  embedding-model: ${EMBEDDING_MODEL:BAAI/bge-small-zh-v1.5}
+  search-providers: ${SEARCH_PROVIDERS:ddgs,bing,baidu}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

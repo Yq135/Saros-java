@@ -15,3 +15,12 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+.idea/
+.DS_Store
+
+# 运行时数据与密钥（对应阶段二 backend/data/ 与 .env：媒体文件、cookie、ONNX 模型、设置）
+data/
+.env
+.env.*
+!.env.example
+.mvn
