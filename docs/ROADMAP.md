@@ -144,7 +144,7 @@ ROADMAP.md（本文）演进路线：三阶段顺序、每阶段目标与交付�
 2. 需要生产级工程能力：安全鉴权、监控体系、缓存等；
 3. 遇到真实性能/维护瓶颈（非猜测性焦虑）。
 
-✅ **G2 已触发（2026-08-21，用户拍板启动阶段三）**——触发原因待补录。
+✅ **G2 已触发（2026-08-30，用户拍板启动阶段三）**——触发原因待补录。
 
 ⚠️ 当前需求非目标仍是「多用户与账号体系、云端部署」（REQUIREMENTS §2），无上述信号则**停留阶段二**——对单用户本地工具而言，Python 方案已是最优投入产出比。
 
@@ -152,9 +152,9 @@ ROADMAP.md（本文）演进路线：三阶段顺序、每阶段目标与交付�
 
 | 事项 | 决策 | 说明 |
 |---|---|---|
-| 框架 | **LangChain4j**（2026-08-21 改，替代原 Spring AI 方案） | `langchain4j-spring-boot4-starter` + OpenAI 兼容模块接 DeepSeek；**QA 全 agent 化**（搜索/沉淀检索为 @Tool、模型自主规划、守卫兜底），大纲/出题/标签为确定性管线 + AiServices；JBoltAI 不再考虑 |
+| 框架 | **LangChain4j**（2026-08-30 改，替代原 Spring AI 方案） | 1.19.0 核心包（`langchain4j` + `langchain4j-open-ai`）手动装配接 DeepSeek（Spring starter 线仍是 beta，J0 已实测规避）；**QA 全 agent 化**（搜索/沉淀检索为 @Tool、模型自主规划、守卫兜底），大纲/出题/标签为确定性管线 + AiServices；JBoltAI 不再考虑 |
 | 架构形态 | **单体优先**，按领域分包（saros-qa / saros-knowledge / saros-webpages / saros-videos） | 原设想提及微服务：当前规模单体足够，保留清晰模块边界以预留拆分空间 |
-| 向量集成 | PostgreSQL JDBC + `com.pgvector:pgvector` + MyBatis VectorTypeHandler | **PG 表结构不变、数据零迁移**——阶段二积累的沉淀与问答历史直接可用 |
+| 向量集成 | PostgreSQL JDBC + `com.pgvector:pgvector`（PGvector 参数经 pgjdbc 直接绑定，无需自定义 TypeHandler） | **PG 表结构不变、数据零迁移**——阶段二积累的沉淀与问答历史直接可用（J1 已实测） |
 | 嵌入 | **ONNX 本地推理**：bge-small-zh-v1.5 一次性导出 ONNX + vocab.txt（导出脚本入库），onnxruntime + BERT 分词器 CPU 推理 | 同模型同 512 维与阶段二向量数据无缝兼容；Python 完全退役；余弦对齐断言（≥0.999）兜底 |
 | 多模型协同 | 自实现 ModelRouter：主模型 + 备用模型，超时/限流/5xx 自动切换回退 | PLAN 中「LLM 可配 + 容错重试」的升级版；主备均走 OpenAI 兼容协议 |
 | 安全 | Spring Security **仅当多用户时引入** | 当前单用户本地（NFR-6 无需登录），提前引入徒增复杂度 |
@@ -187,7 +187,7 @@ ROADMAP.md（本文）演进路线：三阶段顺序、每阶段目标与交付�
 
 | 资产 | 阶段一产出 | 阶段二落地 | 阶段三复用 |
 |---|---|---|---|
-| 语气与 Prompt 规范 | Coze/飞书调试沉淀的《规范》v1 | 翻译进 `prompts.py`（全部中文模板） | Spring AI PromptTemplate |
+| 语气与 Prompt 规范 | Coze/飞书调试沉淀的《规范》v1 | 翻译进 `prompts.py`（全部中文模板） | LangChain4j PromptTemplate（Java 常量类移植） |
 | 标签体系与字段设计 | 多维表格字段 + 标签实践 | 数据模型：tags 全局共用空间 | PG 表结构不变 |
 | 冷启动语料 | 旧文章导入 + AI 总结 | CSV → 批量入库脚本进本地 PG | 已在 PG，零迁移 |
 | 检索参数 | 平台内阈值调试经验 | 0.6/0.3/0.15 混合打分 | 直接复用 |

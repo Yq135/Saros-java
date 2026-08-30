@@ -43,6 +43,8 @@ saros:
     base-url: ${ASR_BASE_URL:http://100.100.61.45:9001/v1}
     api-key: ${ASR_API_KEY:}
     model: ${ASR_MODEL:mlx-community/Qwen3-ASR-1.7B-bf16}
+  embedding:
+    path: ${EMBEDDING_MODEL_PATH:data/models/bge-small-zh-v1.5}
   cookie-path: ${COOKIE_PATH:data/.cookies.txt}
   skip-subtitle: ${SKIP_SUBTITLE:false}
   max-video-height: ${MAX_VIDEO_HEIGHT:720}

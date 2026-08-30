@@ -17,6 +17,8 @@ public class SarosProperties {
 
     private Asr asr = new Asr();
 
+    private Embedding embedding = new Embedding();
+
     /** B 站 cookie 文件路径（相对路径基于进程工作目录） */
     private String cookiePath = "data/.cookies.txt";
 
@@ -49,5 +51,12 @@ public class SarosProperties {
         private String baseUrl = "http://100.100.61.45:9001/v1";
         private String apiKey = "";
         private String model = "mlx-community/Qwen3-ASR-1.7B-bf16";
+    }
+
+    /** 嵌入模型（本地 ONNX 推理，bge-small-zh-v1.5） */
+    @Data
+    public static class Embedding {
+        /** 模型目录：含 model.onnx / vocab.txt / calibration.json（scripts/export_bge_onnx.py 产出） */
+        private String path = "data/models/bge-small-zh-v1.5";
     }
 }

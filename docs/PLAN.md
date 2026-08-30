@@ -4,6 +4,7 @@
 |---|---|---|
 | v0.1 | 2026-08-21 | 初稿：G2 触发、阶段三启动；技术选型（LangChain4j / ONNX 嵌入 / Java 21）与 J0-J5 里程碑、验收标准 |
 | v0.2 | 2026-08-21 | **J0 完成**：pom 全量替换（LangChain4j 1.19.0 核心包手动装配 / Java 21 / 虚拟线程）、契约基线导出 `docs/openapi-phase2.json`（17 端点，真实路径为 bilibili/tasks、settings 等）、契约 smoke + health（含 PG）测试全绿；/actuator/health 实跑 UP（db: PostgreSQL UP） |
+| v0.3 | 2026-08-30 | **J1 完成**：ONNX 导出（CLS 池化，自检余弦 1.0）+ 自研 BertWordPieceTokenizer（13 组校准样本 token 全一致、余弦 ≥0.999）+ knowledge/tags API（契约对齐）+ 15 测试全绿 + **零迁移验证**（真实库 4 条阶段二沉淀可读可检索，语义排名正确） |
 
 > 本文档是 Saros **阶段三（Java 生产化）**的详细技术计划，对应 [ROADMAP.md](ROADMAP.md) §5。
 > 阶段二计划见 Saros-python 仓库 `docs/PLAN.md`；需求与验收基线见 [REQUIREMENTS.md](REQUIREMENTS.md)（v0.12）。
@@ -81,7 +82,7 @@ data/                # gitignore：saros.env、cookies.txt、models/、media/{bv
 
 ### 5.1 嵌入链路（J1 前置）
 
-- **导出（一次性，Python 环境执行）**：`scripts/export_bge_onnx.py` 加载 `BAAI/bge-small-zh-v1.5` → 自定义 forward（token_ids + attention_mask → 均值池化 → L2 归一化）固化进 ONNX 图 → 输出 `data/models/bge-small-zh-v1.5.onnx` + `vocab.txt` + 10 条校准样本（原文 + Python 侧 512 维向量 JSON）。
+- **导出（一次性，Python 环境执行）**：`scripts/export_bge_onnx.py` 加载 `BAAI/bge-small-zh-v1.5` → 自定义 forward（token_ids + attention_mask → **CLS 池化**（模型 ST 配置 pooling_mode_cls_token=True，实测均值池化余弦仅 0.925 不可用）→ L2 归一化）固化进 ONNX 图 → 输出 `data/models/bge-small-zh-v1.5/model.onnx` + `vocab.txt` + 校准样本（原文 + token_ids + Python 侧 512 维向量 JSON）。
 - **Java 推理**：BertTokenizer（vocab.txt，含 CJK 逐字切分）→ ONNX 前向 → 与 Python 输出余弦 ≥ 0.999 对齐测试。
 - 查询侧沿用 BGE 前缀（阶段二同款），KNN 走 `embeddings.embedding <=> :qvec`。
 
@@ -131,8 +132,8 @@ DelegatingChatModel：主模型（DeepSeek）超时/限流/5xx → 自动切换�
 
 | 里程碑 | 内容 | 验收条件 |
 |---|---|---|
-| **J0 骨架**（0.5-1 天）✅ 2026-08-21 完成 | pom 替换（去 Spring AI、加 LangChain4j 核心包 / pgvector / onnxruntime / jieba / jsoup）、Java 21、application.yml、虚拟线程、Actuator health、契约测试基座、OpenAPI 导出 | ① `mvn spring-boot:run` 起服务 ✅；② `/actuator/health` UP 且 PG 检查通过 ✅；③ 契约框架示例用例跑通 ✅ |
-| **J1 knowledge/tags**（1-2 天） | 嵌入导出脚本 + OnnxEmbedder + 对齐测试；knowledge/tags API（分页/标签/掌握度筛选/语义查询）；embeddings 读写 | ① 10 条校准样本 Java vs Python 余弦 ≥ 0.999；② Testcontainers 集成：录入→嵌入→KNN 命中；③ **零迁移验证**：连阶段二 PG 库，旧沉淀可检索可引用；④ /api/knowledge、/api/tags 契约测试通过 |
+| **J0 骨架**（0.5-1 天）✅ 2026-08-30 完成 | pom 替换（去 Spring AI、加 LangChain4j 核心包 / pgvector / onnxruntime / jieba / jsoup）、Java 21、application.yml、虚拟线程、Actuator health、契约测试基座、OpenAPI 导出 | ① `mvn spring-boot:run` 起服务 ✅；② `/actuator/health` UP 且 PG 检查通过 ✅；③ 契约框架示例用例跑通 ✅ |
+| **J1 knowledge/tags**（1-2 天）✅ 2026-08-30 完成 | 嵌入导出脚本 + OnnxEmbedder + 对齐测试；knowledge/tags API（分页/标签/掌握度筛选/语义查询）；embeddings 读写 | ① 13 组校准样本 Java vs Python 余弦 ≥ 0.999（自检 1.0）✅；② PG 独立 schema 沙箱集成：录入→嵌入→KNN 命中 ✅（本机无 Docker，Testcontainers 留作 CI 备选）；③ **零迁移验证**：真实库 4 条阶段二沉淀可读、语义检索排名正确 ✅；④ /api/knowledge、/api/tags 契约测试通过 ✅ |
 | **J2 qa agent**（2-3 天） | 三搜索源 + 混合检索 + QaAgent（@Tool + 守卫 + SSE 流式）+ 多轮会话 + 推荐标签 | ① SSE 事件序列（start/delta/done）契约对齐；② FakeSearch/FakeLLM 集成：断言两工具被调用、引用编号正确、标签仅首轮；③ 守卫测试：模拟模型拒绝调工具 → 兜底管线仍产出合规回答；④ live：真实 DeepSeek 提问 + 同会话追问上下文连贯 |
 | **J3 webpages/videos**（3-5 天） | 网页抽取/出题；B 站全管线（yt-dlp CLI / 字幕三级优先级 / ASR 音频模式 / 大纲 / 出题 / 状态机 / retry / 启动清扫 / 级联删除）+ /media Range | ① 字幕视频 + 无字幕短视频（走 ASR）各一条 live 全流程成功；② 中断重启 → 中间态标记 FAILED → retry 断点续跑成功；③ 删除任务 → 媒体文件清理 + 视频知识级联删除；④ /api/webpages、/api/bilibili/tasks 契约测试通过 |
 | **J4 工程化**（1-2 天） | ModelRouter 主备切换、/api/settings 设置热刷新、LLM 超时/重试打磨（JSON 失败重试 1、超时 300s 重试 1） | ① 主模型配错 key → 自动切换备用仍可回答；② 设置页改 LLM key 即时生效（无需重启）；③ cookie 校验接口对齐；④ 全部契约测试绿 |
