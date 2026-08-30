@@ -1,4 +1,4 @@
-package com.kairon.saros.knowledge;
+package com.kairon.saros.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;

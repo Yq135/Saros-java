@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kairon.saros.mapper.ManualKnowledgeMapper">
+
+    <!-- manual_knowledge 表 SQL 实现（Java 接口定义见 com.kairon.saros.mapper.ManualKnowledgeMapper） -->
+
+    <insert id="insertKnowledge" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO manual_knowledge (user_id, content, mastery_level)
+        VALUES (#{userId}, #{content}, #{masteryLevel})
+    </insert>
+
+    <update id="updateKnowledge">
+        UPDATE manual_knowledge
+        SET content = #{content}, mastery_level = #{masteryLevel}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteKnowledge">
+        DELETE FROM manual_knowledge WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <select id="findById" resultType="com.kairon.saros.po.ManualKnowledge">
+        SELECT id, user_id, content, mastery_level, created_at, updated_at
+        FROM manual_knowledge
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <select id="findByIds" resultType="com.kairon.saros.po.ManualKnowledge">
+        SELECT id, user_id, content, mastery_level, created_at, updated_at
+        FROM manual_knowledge
+        WHERE user_id = #{userId} AND id IN
+        <foreach collection="ids" item="i" open="(" separator="," close=")">#{i}</foreach>
+    </select>
+
+    <select id="listPage" resultType="com.kairon.saros.po.ManualKnowledge">
+        SELECT id, user_id, content, mastery_level, created_at, updated_at
+        FROM manual_knowledge
+        WHERE user_id = #{userId}
+        <if test="q != null and q != ''">
+            AND content ILIKE #{qPattern}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND EXISTS (SELECT 1 FROM tags t2
+                        WHERE t2.manual_knowledge_id = manual_knowledge.id AND t2.name = #{tag})
+        </if>
+        <if test="mastery != null">
+            AND mastery_level = #{mastery}
+        </if>
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countFiltered" resultType="long">
+        SELECT COUNT(*) FROM manual_knowledge
+        WHERE user_id = #{userId}
+        <if test="q != null and q != ''">
+            AND content ILIKE #{qPattern}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND EXISTS (SELECT 1 FROM tags t2
+                        WHERE t2.manual_knowledge_id = manual_knowledge.id AND t2.name = #{tag})
+        </if>
+        <if test="mastery != null">
+            AND mastery_level = #{mastery}
+        </if>
+    </select>
+
+</mapper>

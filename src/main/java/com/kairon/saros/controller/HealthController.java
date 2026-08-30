@@ -1,4 +1,4 @@
-package com.kairon.saros.common;
+package com.kairon.saros.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

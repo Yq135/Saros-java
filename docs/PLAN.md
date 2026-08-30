@@ -54,6 +54,8 @@
 
 ## 4. 项目结构（com.kairon.saros）
 
+DDD 分层约定（J1 起生效）：表对象放 `po/`（一张表一个类）；`mapper/` 下 Java 接口只放操作表的抽象函数定义（@Mapper + @Param，无 SQL），SQL 实现在 `src/main/resources/mapper/*.xml`（namespace 对应接口全限定名，一表一文件）；`dto/` 放 API 契约对象；`service/` 放领域/应用服务；`controller/` 只做参数绑定与路由。单体优先、按层分包保留领域边界。
+
 ```
 src/main/java/com/kairon/saros/
   SarosApplication.java
@@ -61,19 +63,24 @@ src/main/java/com/kairon/saros/
   llm/               # LangChain4j 装配：DeepSeek 模型 bean（流式/非流式）、
                      #   PromptTemplates（prompts.py 全量移植）、ModelRouter（J4）
   agent/             # QaAgent 接口（@SystemMessage + @Tool）、SearchTool、KnowledgeTool、AgentGuard
-  qa/                # QaController(SSE)、QaService、mapper（qa_conversations/qa_messages）
-  knowledge/         # KnowledgeController、KnowledgeService、TagsController、mapper
+  qa/                # QaController(SSE)、QaService（J2）
   search/            # SearchProvider 接口 + DuckDuckGoProvider/BingProvider/BaiduProvider/SearchFacade
   retrieval/         # 混合检索：KnnCandidateQuery、LexicalScorer（jieba）、TagScorer、HybridRanker（0.6/0.3/0.15）
-  embed/             # OnnxEmbedder、BertTokenizerFactory、EmbeddingService
-  webpages/          # WebpageController、WebpageService、JinaReaderClient、JsoupExtractor、QuestionGenerator
-  videos/            # VideoController、VideoTaskService（状态机）、YtDlpRunner、SubtitleParser、
-                     #   AsrClient、AudioSlicer、OutlineGenerator、VideoQuestionGenerator、StartupSweeper
-  settings/          # SettingsController（/api/settings）、SettingsService（热刷新）
-  media/             # MediaFileController（/media/**，HTTP Range）
+  embed/             # OnnxEmbedder、BertWordPieceTokenizer、EmbeddingService
+  webpages/          # WebpageService、JinaReaderClient、JsoupExtractor、QuestionGenerator（J3）
+  videos/            # VideoTaskService（状态机）、YtDlpRunner、SubtitleParser、
+                     #   AsrClient、AudioSlicer、OutlineGenerator、VideoQuestionGenerator、StartupSweeper（J3）
+  settings/          # SettingsService（热刷新，J4）
+  media/             # /media/** HTTP Range 映射（J3）
+  po/                # 表对象：users/manual_knowledge/tags/embeddings（一张表一个类）+ 查询投影
+  mapper/            # MyBatis 接口（仅方法签名，无 SQL）
+  service/           # KnowledgeService、UserService 等
+  controller/        # KnowledgeController、HealthController 等
+  dto/               # API 契约 DTO（对齐 OpenAPI 基线）
   common/            # 异常处理、JSON 工具、SseEmitterHelper
 src/main/resources/
   application.yml    # server.port=8080、PG、虚拟线程、/media 映射
+  mapper/            # Mapper XML（namespace 对应 mapper/ 下接口，一表一文件）
 scripts/             # export_bge_onnx.py、openapi_export.sh（导出阶段二 OpenAPI）
 data/                # gitignore：saros.env、cookies.txt、models/、media/{bvid}/
 ```

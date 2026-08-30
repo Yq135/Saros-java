@@ -1,5 +1,6 @@
-package com.kairon.saros.knowledge;
+package com.kairon.saros.controller;
 
+import com.kairon.saros.service.KnowledgeService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,12 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import static com.kairon.saros.knowledge.KnowledgeDtos.CreateRequest;
-import static com.kairon.saros.knowledge.KnowledgeDtos.ListOut;
-import static com.kairon.saros.knowledge.KnowledgeDtos.Out;
-import static com.kairon.saros.knowledge.KnowledgeDtos.SearchOut;
-import static com.kairon.saros.knowledge.KnowledgeDtos.SearchRequest;
-import static com.kairon.saros.knowledge.KnowledgeDtos.UpdateRequest;
+import static com.kairon.saros.dto.KnowledgeDtos.CreateRequest;
+import static com.kairon.saros.dto.KnowledgeDtos.ListOut;
+import static com.kairon.saros.dto.KnowledgeDtos.Out;
+import static com.kairon.saros.dto.KnowledgeDtos.SearchOut;
+import static com.kairon.saros.dto.KnowledgeDtos.SearchRequest;
+import static com.kairon.saros.dto.KnowledgeDtos.UpdateRequest;
 
 /**
  * 模块四 API（契约对齐阶段二 OpenAPI 基线 /api/knowledge、/api/tags）。

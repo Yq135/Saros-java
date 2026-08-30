@@ -1,9 +1,14 @@
-package com.kairon.saros.knowledge;
+package com.kairon.saros.service;
 
 import com.kairon.saros.common.ApiException;
 import com.kairon.saros.common.GlobalExceptionHandler.ValidationException;
-import com.kairon.saros.common.UserService;
 import com.kairon.saros.embed.EmbeddingService;
+import com.kairon.saros.mapper.EmbeddingMapper;
+import com.kairon.saros.mapper.ManualKnowledgeMapper;
+import com.kairon.saros.mapper.TagMapper;
+import com.kairon.saros.po.KnnHit;
+import com.kairon.saros.po.ManualKnowledge;
+import com.kairon.saros.po.Tag;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,13 +17,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.kairon.saros.knowledge.KnowledgeDtos.CreateRequest;
-import static com.kairon.saros.knowledge.KnowledgeDtos.Hit;
-import static com.kairon.saros.knowledge.KnowledgeDtos.ListOut;
-import static com.kairon.saros.knowledge.KnowledgeDtos.Out;
-import static com.kairon.saros.knowledge.KnowledgeDtos.SearchOut;
-import static com.kairon.saros.knowledge.KnowledgeDtos.SearchRequest;
-import static com.kairon.saros.knowledge.KnowledgeDtos.UpdateRequest;
+import static com.kairon.saros.dto.KnowledgeDtos.CreateRequest;
+import static com.kairon.saros.dto.KnowledgeDtos.Hit;
+import static com.kairon.saros.dto.KnowledgeDtos.ListOut;
+import static com.kairon.saros.dto.KnowledgeDtos.Out;
+import static com.kairon.saros.dto.KnowledgeDtos.SearchOut;
+import static com.kairon.saros.dto.KnowledgeDtos.SearchRequest;
+import static com.kairon.saros.dto.KnowledgeDtos.UpdateRequest;
 
 /**
  * 模块四服务：手打知识 CRUD + 标签 + 语义查询（小RAG，纯检索）。
@@ -32,12 +37,18 @@ public class KnowledgeService {
     private static final int MAX_TAG_LEN = 100;
     private static final int MAX_QUERY_LEN = 2000;
 
-    private final KnowledgeMapper mapper;
+    private final ManualKnowledgeMapper manualKnowledgeMapper;
+    private final TagMapper tagMapper;
+    private final EmbeddingMapper embeddingMapper;
     private final UserService userService;
     private final EmbeddingService embeddingService;
 
-    public KnowledgeService(KnowledgeMapper mapper, UserService userService, EmbeddingService embeddingService) {
-        this.mapper = mapper;
+    public KnowledgeService(ManualKnowledgeMapper manualKnowledgeMapper, TagMapper tagMapper,
+                            EmbeddingMapper embeddingMapper, UserService userService,
+                            EmbeddingService embeddingService) {
+        this.manualKnowledgeMapper = manualKnowledgeMapper;
+        this.tagMapper = tagMapper;
+        this.embeddingMapper = embeddingMapper;
         this.userService = userService;
         this.embeddingService = embeddingService;
     }
@@ -51,14 +62,14 @@ public class KnowledgeService {
         // 先嵌入（本地 CPU 推理），失败不写任何数据
         float[] vector = embeddingService.encodeText(req.content());
 
-        KnowledgeMapper.KnowledgeRow row = new KnowledgeMapper.KnowledgeRow();
+        ManualKnowledge row = new ManualKnowledge();
         row.userId = userId;
         row.content = req.content();
         row.masteryLevel = mastery;
-        mapper.insertKnowledge(row);
+        manualKnowledgeMapper.insertKnowledge(row);
         replaceTags(row.id, tags);
-        mapper.deleteEmbedding(userId, row.id);
-        mapper.insertEmbedding(userId, row.id, req.content(), embeddingService.toPgVector(vector));
+        embeddingMapper.deleteEmbedding(userId, row.id);
+        embeddingMapper.insertEmbedding(userId, row.id, req.content(), embeddingService.toPgVector(vector));
         return fetchOut(row.id, userId);
     }
 
@@ -71,9 +82,9 @@ public class KnowledgeService {
         }
         long userId = userService.getUserId();
         String qPattern = (q == null || q.isEmpty()) ? null : "%" + q + "%";
-        List<KnowledgeMapper.KnowledgeRow> rows = mapper.listPage(
+        List<ManualKnowledge> rows = manualKnowledgeMapper.listPage(
                 userId, emptyToNull(q), qPattern, emptyToNull(tag), mastery, pageSize, (page - 1) * pageSize);
-        long total = mapper.countFiltered(userId, emptyToNull(q), qPattern, emptyToNull(tag), mastery);
+        long total = manualKnowledgeMapper.countFiltered(userId, emptyToNull(q), qPattern, emptyToNull(tag), mastery);
         return new ListOut(rowsToOut(rows, userId), total, page, pageSize);
     }
 
@@ -89,25 +100,25 @@ public class KnowledgeService {
         List<String> tags = cleanTags(req.tags());
         float[] vector = embeddingService.encodeText(req.content());
 
-        KnowledgeMapper.KnowledgeRow row = new KnowledgeMapper.KnowledgeRow();
+        ManualKnowledge row = new ManualKnowledge();
         row.id = kid;
         row.userId = userId;
         row.content = req.content();
         row.masteryLevel = mastery;
-        if (mapper.updateKnowledge(row) == 0) {
+        if (manualKnowledgeMapper.updateKnowledge(row) == 0) {
             throw ApiException.notFound("知识点不存在");
         }
         replaceTags(kid, tags);
-        mapper.deleteEmbedding(userId, kid);
-        mapper.insertEmbedding(userId, kid, req.content(), embeddingService.toPgVector(vector));
+        embeddingMapper.deleteEmbedding(userId, kid);
+        embeddingMapper.insertEmbedding(userId, kid, req.content(), embeddingService.toPgVector(vector));
         return fetchOut(kid, userId);
     }
 
     @Transactional
     public void delete(long kid) {
         long userId = userService.getUserId();
-        mapper.deleteEmbedding(userId, kid);
-        if (mapper.deleteKnowledge(kid, userId) == 0) {
+        embeddingMapper.deleteEmbedding(userId, kid);
+        if (manualKnowledgeMapper.deleteKnowledge(kid, userId) == 0) {
             throw ApiException.notFound("知识点不存在");
         }
     }
@@ -125,14 +136,14 @@ public class KnowledgeService {
             throw new ValidationException("top_k", "ensure this value is between 1 and 50");
         }
         long userId = userService.getUserId();
-        List<KnowledgeMapper.KnnRow> hits = mapper.knnSearch(
+        List<KnnHit> hits = embeddingMapper.knnSearch(
                 userId, embeddingService.toPgVector(embeddingService.encodeQuery(query)), topK);
         if (hits.isEmpty()) {
             return new SearchOut(List.of());
         }
         Map<Long, Out> rows = fetchOutsByIds(hits.stream().map(h -> h.sourceId).toList(), userId);
         List<Hit> items = new ArrayList<>();
-        for (KnowledgeMapper.KnnRow hit : hits) {
+        for (KnnHit hit : hits) {
             Out row = rows.get(hit.sourceId);
             if (row == null) {
                 continue; // 容错：向量行指向已删笔记则跳过（对齐阶段二）
@@ -144,7 +155,7 @@ public class KnowledgeService {
     }
 
     public List<String> suggestTags(String q) {
-        return mapper.suggestTags(userService.getUserId(), "%" + (q == null ? "" : q) + "%");
+        return tagMapper.suggestTags(userService.getUserId(), "%" + (q == null ? "" : q) + "%");
     }
 
     // ---- 内部工具 ----
@@ -186,21 +197,21 @@ public class KnowledgeService {
     }
 
     private void replaceTags(long kid, List<String> tags) {
-        mapper.deleteTags(kid);
+        tagMapper.deleteTags(kid);
         for (String t : tags) {
-            mapper.insertTag(kid, t);
+            tagMapper.insertTag(kid, t);
         }
     }
 
     private Out fetchOut(long kid, long userId) {
-        KnowledgeMapper.KnowledgeRow row = mapper.findById(kid, userId);
+        ManualKnowledge row = manualKnowledgeMapper.findById(kid, userId);
         if (row == null) {
             throw ApiException.notFound("知识点不存在");
         }
         return toOut(row, tagsOf(kid, userId));
     }
 
-    private List<Out> rowsToOut(List<KnowledgeMapper.KnowledgeRow> rows, long userId) {
+    private List<Out> rowsToOut(List<ManualKnowledge> rows, long userId) {
         Map<Long, List<String>> tagsByKid = tagsOf(rows.stream().map(r -> r.id).toList(), userId);
         return rows.stream().map(r -> toOut(r, tagsByKid.getOrDefault(r.id, List.of()))).toList();
     }
@@ -211,7 +222,7 @@ public class KnowledgeService {
         }
         Map<Long, List<String>> tagsByKid = tagsOf(ids, userId);
         Map<Long, Out> out = new LinkedHashMap<>();
-        for (KnowledgeMapper.KnowledgeRow row : mapper.findByIds(ids, userId)) {
+        for (ManualKnowledge row : manualKnowledgeMapper.findByIds(ids, userId)) {
             out.put(row.id, toOut(row, tagsByKid.getOrDefault(row.id, List.of())));
         }
         return out;
@@ -222,20 +233,20 @@ public class KnowledgeService {
             return Map.of();
         }
         Map<Long, List<String>> map = new LinkedHashMap<>();
-        for (KnowledgeMapper.TagRow tag : mapper.findTagsByKnowledgeIds(kids)) {
-            map.computeIfAbsent(tag.kid, k -> new ArrayList<>()).add(tag.name);
+        for (Tag tag : tagMapper.findTagsByKnowledgeIds(kids)) {
+            map.computeIfAbsent(tag.manualKnowledgeId, k -> new ArrayList<>()).add(tag.name);
         }
         return map;
     }
 
     private List<String> tagsOf(long kid, long userId) {
-        List<String> tags = mapper.findTagsByKnowledgeIds(List.of(kid)).stream()
+        List<String> tags = tagMapper.findTagsByKnowledgeIds(List.of(kid)).stream()
                 .map(t -> t.name)
                 .toList();
         return tags;
     }
 
-    private Out toOut(KnowledgeMapper.KnowledgeRow row, List<String> tags) {
+    private Out toOut(ManualKnowledge row, List<String> tags) {
         return new Out(row.id, row.content, row.masteryLevel, tags, row.createdAt, row.updatedAt);
     }
 

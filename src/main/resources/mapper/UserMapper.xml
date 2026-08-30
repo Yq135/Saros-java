@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kairon.saros.mapper.UserMapper">
+
+    <!-- users 表 SQL 实现（Java 接口定义见 com.kairon.saros.mapper.UserMapper） -->
+
+    <select id="findByUsername" resultType="com.kairon.saros.po.User">
+        SELECT id, username, created_at FROM users WHERE username = #{username}
+    </select>
+
+    <insert id="insertIgnore">
+        INSERT INTO users (username) VALUES (#{username}) ON CONFLICT (username) DO NOTHING
+    </insert>
+
+</mapper>

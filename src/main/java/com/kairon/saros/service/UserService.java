@@ -1,5 +1,7 @@
-package com.kairon.saros.common;
+package com.kairon.saros.service;
 
+import com.kairon.saros.mapper.UserMapper;
+import com.kairon.saros.po.User;
 import org.springframework.stereotype.Service;
 
 /**
@@ -27,11 +29,11 @@ public class UserService {
                 id = userId;
                 if (id == null) {
                     userMapper.insertIgnore(DEFAULT_USERNAME);
-                    id = userMapper.findIdByUsername(DEFAULT_USERNAME);
-                    userId = id;
+                    User user = userMapper.findByUsername(DEFAULT_USERNAME);
+                    userId = user.id;
                 }
             }
         }
-        return id;
+        return userId;
     }
 }
