@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Saros 日志配置（slf4j + logback，Spring Boot 默认实现）。
+
+  通用规范：
+  - 控制台：本地开发实时查看，生产由 start.sh 重定向至 logs/console.log
+  - 文件：logs/saros.log 滚动落盘（按天 + 50MB 切分，压缩保留 30 天，总量 1GB 封顶）
+  - 级别：业务包 com.kairon.saros 为 INFO（关键请求节点 INFO、异常 ERROR/WARN）；
+    第三方框架（MyBatis/Hikari/HTTP 等）降噪为 WARN
+-->
+<configuration>
+    <!-- 控制台（彩色级别标记，UTF-8） -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 滚动文件：logs/saros.log（SizeAndTimeBasedRollingPolicy 按天+大小切分） -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/saros.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/saros.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 业务包：INFO 起（DEBUG 需本地临时调整） -->
+    <logger name="com.kairon.saros" level="INFO"/>
+
+    <!-- 第三方降噪 -->
+    <logger name="org.apache.catalina" level="WARN"/>
+    <logger name="org.mybatis" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

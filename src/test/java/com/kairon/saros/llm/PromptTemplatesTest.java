@@ -61,13 +61,13 @@ class PromptTemplatesTest {
     @Test
     void historyTextTruncatesAnswerAt1000CharsHard() {
         QaHistoryRow row = new QaHistoryRow();
-        row.question = "问题全文";
-        row.answer = "答".repeat(1500);
+        row.setQuestion("问题全文");
+        row.setAnswer("答".repeat(1500));
         String text = PromptTemplates.buildHistoryText(List.of(row));
         assertThat(text).isEqualTo("用户：问题全文\n助手：" + "答".repeat(1000));
 
         QaHistoryRow nullAnswer = new QaHistoryRow();
-        nullAnswer.question = "q";
+        nullAnswer.setQuestion("q");
         assertThat(PromptTemplates.buildHistoryText(List.of(nullAnswer))).isEqualTo("用户：q\n助手：");
     }
 

@@ -54,22 +54,22 @@ public class HybridRetriever {
             return List.of();
         }
         Set<String> tokens = ranker.tokens(question);
-        List<Long> ids = candidates.stream().map(c -> c.sourceId).distinct().toList();
+        List<Long> ids = candidates.stream().map(KnnHit::getSourceId).distinct().toList();
         Map<Long, String> contentMap = knowledgeMapper.findByIds(ids, userId).stream()
-                .collect(Collectors.toMap(k -> k.id, k -> k.content, (a, b) -> a));
+                .collect(Collectors.toMap(k -> k.getId(), k -> k.getContent(), (a, b) -> a));
         Map<Long, List<String>> tagsMap = tagMapper.findTagsByKnowledgeIds(ids).stream()
-                .collect(Collectors.groupingBy(t -> t.manualKnowledgeId,
-                        Collectors.mapping(t -> t.name, Collectors.toList())));
+                .collect(Collectors.groupingBy(t -> t.getManualKnowledgeId(),
+                        Collectors.mapping(t -> t.getName(), Collectors.toList())));
 
         List<KnowledgeHit> scored = new ArrayList<>();
         for (KnnHit c : candidates) {
-            long kid = c.sourceId;
+            long kid = c.getSourceId();
             // 笔记已删的候选仍参与打分：用 chunk 内容、tags=[]（对齐阶段二）
-            String content = contentMap.getOrDefault(kid, c.chunkContent);
+            String content = contentMap.getOrDefault(kid, c.getChunkContent());
             List<String> tags = tagsMap.getOrDefault(kid, List.of());
-            double score = ranker.score(c.similarity, tokens, content, tags);
+            double score = ranker.score(c.getSimilarity(), tokens, content, tags);
             if (ranker.aboveThreshold(score)) {
-                scored.add(new KnowledgeHit(kid, content, round4(c.similarity), round4(score), tags));
+                scored.add(new KnowledgeHit(kid, content, round4(c.getSimilarity()), round4(score), tags));
             }
         }
         scored.sort(Comparator.comparingDouble(KnowledgeHit::score).reversed());

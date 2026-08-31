@@ -30,7 +30,7 @@ public class UserService {
                 if (id == null) {
                     userMapper.insertIgnore(DEFAULT_USERNAME);
                     User user = userMapper.findByUsername(DEFAULT_USERNAME);
-                    userId = user.id;
+                    userId = user.getId();
                 }
             }
         }

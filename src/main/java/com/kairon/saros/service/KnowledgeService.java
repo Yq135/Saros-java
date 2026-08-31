@@ -63,14 +63,14 @@ public class KnowledgeService {
         float[] vector = embeddingService.encodeText(req.content());
 
         ManualKnowledge row = new ManualKnowledge();
-        row.userId = userId;
-        row.content = req.content();
-        row.masteryLevel = mastery;
+        row.setUserId(userId);
+        row.setContent(req.content());
+        row.setMasteryLevel(mastery);
         manualKnowledgeMapper.insertKnowledge(row);
-        replaceTags(row.id, tags);
-        embeddingMapper.deleteEmbedding(userId, row.id);
-        embeddingMapper.insertEmbedding(userId, row.id, req.content(), embeddingService.toPgVector(vector));
-        return fetchOut(row.id, userId);
+        replaceTags(row.getId(), tags);
+        embeddingMapper.deleteEmbedding(userId, row.getId());
+        embeddingMapper.insertEmbedding(userId, row.getId(), req.content(), embeddingService.toPgVector(vector));
+        return fetchOut(row.getId(), userId);
     }
 
     public ListOut list(String q, String tag, Integer mastery, int page, int pageSize) {
@@ -101,10 +101,10 @@ public class KnowledgeService {
         float[] vector = embeddingService.encodeText(req.content());
 
         ManualKnowledge row = new ManualKnowledge();
-        row.id = kid;
-        row.userId = userId;
-        row.content = req.content();
-        row.masteryLevel = mastery;
+        row.setId(kid);
+        row.setUserId(userId);
+        row.setContent(req.content());
+        row.setMasteryLevel(mastery);
         if (manualKnowledgeMapper.updateKnowledge(row) == 0) {
             throw ApiException.notFound("知识点不存在");
         }
@@ -141,15 +141,15 @@ public class KnowledgeService {
         if (hits.isEmpty()) {
             return new SearchOut(List.of());
         }
-        Map<Long, Out> rows = fetchOutsByIds(hits.stream().map(h -> h.sourceId).toList(), userId);
+        Map<Long, Out> rows = fetchOutsByIds(hits.stream().map(h -> h.getSourceId()).toList(), userId);
         List<Hit> items = new ArrayList<>();
         for (KnnHit hit : hits) {
-            Out row = rows.get(hit.sourceId);
+            Out row = rows.get(hit.getSourceId());
             if (row == null) {
                 continue; // 容错：向量行指向已删笔记则跳过（对齐阶段二）
             }
             items.add(new Hit(row.id(), row.content(), row.masteryLevel(), row.tags(),
-                    row.createdAt(), row.updatedAt(), hit.similarity));
+                    row.createdAt(), row.updatedAt(), hit.getSimilarity()));
         }
         return new SearchOut(items);
     }
@@ -212,8 +212,8 @@ public class KnowledgeService {
     }
 
     private List<Out> rowsToOut(List<ManualKnowledge> rows, long userId) {
-        Map<Long, List<String>> tagsByKid = tagsOf(rows.stream().map(r -> r.id).toList(), userId);
-        return rows.stream().map(r -> toOut(r, tagsByKid.getOrDefault(r.id, List.of()))).toList();
+        Map<Long, List<String>> tagsByKid = tagsOf(rows.stream().map(ManualKnowledge::getId).toList(), userId);
+        return rows.stream().map(r -> toOut(r, tagsByKid.getOrDefault(r.getId(), List.of()))).toList();
     }
 
     private Map<Long, Out> fetchOutsByIds(List<Long> ids, long userId) {
@@ -223,7 +223,7 @@ public class KnowledgeService {
         Map<Long, List<String>> tagsByKid = tagsOf(ids, userId);
         Map<Long, Out> out = new LinkedHashMap<>();
         for (ManualKnowledge row : manualKnowledgeMapper.findByIds(ids, userId)) {
-            out.put(row.id, toOut(row, tagsByKid.getOrDefault(row.id, List.of())));
+            out.put(row.getId(), toOut(row, tagsByKid.getOrDefault(row.getId(), List.of())));
         }
         return out;
     }
@@ -234,20 +234,21 @@ public class KnowledgeService {
         }
         Map<Long, List<String>> map = new LinkedHashMap<>();
         for (Tag tag : tagMapper.findTagsByKnowledgeIds(kids)) {
-            map.computeIfAbsent(tag.manualKnowledgeId, k -> new ArrayList<>()).add(tag.name);
+            map.computeIfAbsent(tag.getManualKnowledgeId(), k -> new ArrayList<>()).add(tag.getName());
         }
         return map;
     }
 
     private List<String> tagsOf(long kid, long userId) {
         List<String> tags = tagMapper.findTagsByKnowledgeIds(List.of(kid)).stream()
-                .map(t -> t.name)
+                .map(Tag::getName)
                 .toList();
         return tags;
     }
 
     private Out toOut(ManualKnowledge row, List<String> tags) {
-        return new Out(row.id, row.content, row.masteryLevel, tags, row.createdAt, row.updatedAt);
+        return new Out(row.getId(), row.getContent(), row.getMasteryLevel(), tags,
+                row.getCreatedAt(), row.getUpdatedAt());
     }
 
     private String emptyToNull(String s) {

@@ -24,3 +24,7 @@ data/
 .env.*
 !.env.example
 .mvn
+
+# 运行脚本产物（start.sh/stop.sh）
+.saros.pid
+logs/

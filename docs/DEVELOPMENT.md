@@ -48,7 +48,7 @@ src/main/resources/
 ## 4. PO 规范（po/）
 
 - 一张表一个类，类名 = 表名转大驼峰：`users` → `User`、`manual_knowledge` → `ManualKnowledge`、`tags` → `Tag`、`embeddings` → `Embedding`。
-- 字段 = 表列蛇形转驼峰，public 字段（与现有 J1 风格一致）；类型映射：
+- 字段 = 表列蛇形转驼峰，**private 字段 + Lombok `@Data`**（getter/setter 自动生成）；service 层一律经 setter 赋值、getter 读取，禁止直接字段访问；MyBatis 经 setter 映射列（map-underscore-to-camel-case 与 useGeneratedKeys 均走 setter，无需 XML 改动）。类型映射：
 
 | PG 类型 | Java 类型 |
 |---|---|
@@ -61,6 +61,7 @@ src/main/resources/
 
 - 查询投影（非表对象，如 KNN 命中带计算列 similarity）也放 po/，Javadoc 注明「查询投影，非纯表对象」。
 - PO 不写任何序列化注解；API 输出一律经 service 转 dto。
+- 查询投影（KnnHit/QaConversationListItem/QaHistoryRow 等）同样 private + @Data。
 
 ## 5. Mapper 规范
 
@@ -137,7 +138,13 @@ PG_HOST=100.109.98.117 PG_PORT=5432 PG_USER=saros PG_PASSWORD='saros#2026!' PG_D
 
 日常步骤：`./mvnw -q compile`（编译）→ 上述命令跑全量测试 → 全绿才算一个里程碑内改动完成。**改动前后测试数量与结果要对照**（J1 基线：15 个全绿）。
 
-## 10. J1 参考实现索引
+## 10. 日志规范（slf4j + logback）
+
+- 门面统一 **slf4j**（`org.slf4j.Logger` / `LoggerFactory`），实现为 Spring Boot 默认 **logback**，配置见 [logback-spring.xml](../src/main/resources/logback-spring.xml)：控制台 + 滚动文件双 appender（`logs/saros.log` 按天+50MB 切分、压缩保留 30 天、总量 1GB 封顶）。
+- 级别约定：业务包 `com.kairon.saros` INFO 起；关键业务节点打 INFO（如问答开始/完成：会话 id、来源/引用/标签条数、耗时），业务中断打 WARN，异常打 ERROR（附上下文参数）；第三方框架（MyBatis/Hikari/Tomcat）统一 WARN 降噪。
+- 禁止 `System.out.println`；日志信息不包含敏感数据（API key 等）。`start.sh` 的 nohup 输出走 `logs/console.log`，与应用日志文件分离。
+
+## 11. J1 参考实现索引
 
 以下文件是全部约定的「活样例」，新模块照抄模式：
 
@@ -150,9 +157,10 @@ PG_HOST=100.109.98.117 PG_PORT=5432 PG_USER=saros PG_PASSWORD='saros#2026!' PG_D
 | Service | [service/KnowledgeService.java](../src/main/java/com/kairon/saros/service/KnowledgeService.java)（事务边界 + 异常规范）、[service/UserService.java](../src/main/java/com/kairon/saros/service/UserService.java) |
 | Controller | [controller/KnowledgeController.java](../src/main/java/com/kairon/saros/controller/KnowledgeController.java)（蛇形参数显式声明示例） |
 
-## 11. 变更记录
+## 12. 变更记录
 
 | 版本 | 日期 | 说明 |
 |---|---|---|
 | v0.1 | 2026-08-30 | 初稿：J1 完成时确立 DDD 分层 + MyBatis XML 流程约定 |
 | v0.2 | 2026-08-30 | J2 完成补充：① PG 数组列用自定义 TypeHandler（BIGINT[]↔Long[]、TEXT[]↔String[]，经 JDBC Array，`mybatis.type-handlers-package` 注册，样例 common/LongArrayTypeHandler）；② JSONB↔String + Jackson 手动序列化（XML 写 `CAST(#{x} AS JSONB)`、读 `CAST(x AS TEXT)`）；③ SSE 用 SseEmitter + common/SseEmitterHelper（300s 超时），状态机类依赖 `SseEmitterHelper.Channel` 抽象以便单测（QaSseSink 样例）；④ 多构造器 bean 需在注入构造器上加 @Autowired（SearchFacade 样例）；⑤ 集成测试假件接缝：AiServices 唯一构建处（QaAgentFactory）用 @TestConfiguration @Primary 覆盖、@MockitoBean 打桩外部依赖、包私有测试构造器注入假源（SearchFacade 样例） |
+| v0.3 | 2026-08-31 | J2 完成后修订：①PO 字段全部私有化（Lombok @Data），service 经 setter/getter 访问（§4）；②新增日志规范章节（slf4j + logback-spring.xml，§10） |

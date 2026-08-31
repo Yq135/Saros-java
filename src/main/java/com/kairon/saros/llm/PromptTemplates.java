@@ -117,8 +117,8 @@ public final class PromptTemplates {
         }
         return rows.stream()
                 .flatMap(r -> Stream.of(
-                        "用户：" + r.question,
-                        "助手：" + truncate(r.answer == null ? "" : r.answer, ANSWER_TRUNCATE)))
+                        "用户：" + r.getQuestion(),
+                        "助手：" + truncate(r.getAnswer() == null ? "" : r.getAnswer(), ANSWER_TRUNCATE)))
                 .collect(Collectors.joining("\n"));
     }
 

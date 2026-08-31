@@ -114,12 +114,14 @@ public class QaService {
     public void ask(String rawQuestion, Integer conversationId, SseEmitter emitter) {
         String question = rawQuestion.strip();
         QaSseSink sink = null;
+        long startedAt = System.currentTimeMillis();
         try {
             long userId = userService.getUserId();
             QaRunContext ctx = new QaRunContext(userId);
             sink = new QaSseSink(SseEmitterHelper.channel(emitter), json, ctx);
             try {
                 ensureConversation(question, conversationId, ctx);
+                log.info("问答开始: conversationId={}, isNew={}, 问题长度={}字", ctx.conversationId, ctx.isNew, question.length());
                 // 预检：搜索 + 混合检索；均空 → error 短路（阶段二语义，零 LLM 成本）
                 precheck(question, ctx);
                 String history = ctx.isNew ? "" : loadHistory(ctx.conversationId, userId);
@@ -139,6 +141,11 @@ public class QaService {
                 }
                 long messageId = saveMessage(ctx, question, answer, tags);
                 sink.sendDone(messageId, answer, tags);
+                log.info("问答完成: messageId={}, conversationId={}, 来源={}条, 引用沉淀={}条, 标签={}个, 耗时={}ms",
+                        messageId, ctx.conversationId,
+                        ctx.sources == null ? 0 : ctx.sources.size(),
+                        ctx.knowledge == null ? 0 : ctx.knowledge.size(),
+                        tags.size(), System.currentTimeMillis() - startedAt);
             } finally {
                 // 空会话清理（对齐阶段二 delete_conversation_if_empty：覆盖失败/客户端断开等所有路径）
                 if (ctx.isNew && ctx.conversationId > 0) {
@@ -146,6 +153,7 @@ public class QaService {
                 }
             }
         } catch (QaAbortException e) {
+            log.warn("问答中断: conversationId={}, detail={}", conversationId, e.getDetail());
             if (sink != null) {
                 sink.sendError(e.getDetail());
             } else {
@@ -164,10 +172,10 @@ public class QaService {
     private void ensureConversation(String question, Integer conversationId, QaRunContext ctx) {
         if (conversationId == null) {
             QaConversation conv = new QaConversation();
-            conv.userId = ctx.userId;
-            conv.title = question.length() <= TITLE_MAX_LEN ? question : question.substring(0, TITLE_MAX_LEN);
+            conv.setUserId(ctx.userId);
+            conv.setTitle(question.length() <= TITLE_MAX_LEN ? question : question.substring(0, TITLE_MAX_LEN));
             conversationMapper.insertConversation(conv);
-            ctx.conversationId = conv.id;
+            ctx.conversationId = conv.getId();
             ctx.isNew = true;
             return;
         }
@@ -257,22 +265,22 @@ public class QaService {
     /** 答案+来源+引用沉淀+首轮标签一次入库（流完成后）；空数组存 NULL（对齐阶段二 or None）。 */
     private long saveMessage(QaRunContext ctx, String question, String answer, List<String> tags) {
         QaMessage msg = new QaMessage();
-        msg.conversationId = ctx.conversationId;
-        msg.userId = ctx.userId;
-        msg.question = question;
-        msg.answer = answer;
+        msg.setConversationId(ctx.conversationId);
+        msg.setUserId(ctx.userId);
+        msg.setQuestion(question);
+        msg.setAnswer(answer);
         try {
             // search_sources 恒存（空也存 []，对齐阶段二 Jsonb(sources)）
-            msg.searchSources = json.writeValueAsString(ctx.sources == null ? List.of() : ctx.sources);
+            msg.setSearchSources(json.writeValueAsString(ctx.sources == null ? List.of() : ctx.sources));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("搜索来源序列化失败", e);
         }
         List<Long> knowledgeIds = ctx.knowledge == null ? List.of()
                 : ctx.knowledge.stream().map(KnowledgeHit::id).toList();
-        msg.referencedKnowledgeIds = knowledgeIds.isEmpty() ? null : knowledgeIds.toArray(Long[]::new);
-        msg.suggestedTags = tags.isEmpty() ? null : tags.toArray(String[]::new);
+        msg.setReferencedKnowledgeIds(knowledgeIds.isEmpty() ? null : knowledgeIds.toArray(Long[]::new));
+        msg.setSuggestedTags(tags.isEmpty() ? null : tags.toArray(String[]::new));
         messageMapper.insertMessage(msg);
-        return msg.id;
+        return msg.getId();
     }
 
     private void sendErrorQuietly(SseEmitter emitter, String detail) {
@@ -292,7 +300,8 @@ public class QaService {
         // 阶段二：q strip 后非空才筛选，pattern 用未 strip 的 q
         String qPattern = (q == null || q.strip().isEmpty()) ? null : "%" + q + "%";
         return conversationMapper.listWithCount(userId, qPattern, LIST_LIMIT).stream()
-                .map(r -> new QaDtos.ConversationOut(r.id, r.title, r.messageCount, r.createdAt, r.lastActive))
+                .map(r -> new QaDtos.ConversationOut(r.getId(), r.getTitle(), r.getMessageCount(),
+                        r.getCreatedAt(), r.getLastActive()))
                 .toList();
     }
 
@@ -307,7 +316,7 @@ public class QaService {
         List<QaDtos.MessageOut> outs = messages.stream()
                 .map(m -> toMessageOut(m, contentMap))
                 .toList();
-        return new QaDtos.ConversationDetail(conv.id, conv.title, conv.createdAt, outs);
+        return new QaDtos.ConversationDetail(conv.getId(), conv.getTitle(), conv.getCreatedAt(), outs);
     }
 
     public void deleteConversation(long cid) {
@@ -322,22 +331,22 @@ public class QaService {
     /** 引用沉淀 id 全集 → 笔记当前正文（已删笔记自然缺席，组装时跳过）。 */
     private Map<Long, String> loadContentMap(List<QaMessage> messages, long userId) {
         List<Long> ids = messages.stream()
-                .flatMap(m -> m.referencedKnowledgeIds == null
+                .flatMap(m -> m.getReferencedKnowledgeIds() == null
                         ? java.util.stream.Stream.empty()
-                        : Arrays.stream(m.referencedKnowledgeIds))
+                        : Arrays.stream(m.getReferencedKnowledgeIds()))
                 .distinct()
                 .toList();
         if (ids.isEmpty()) {
             return Map.of();
         }
         return knowledgeMapper.findByIds(ids, userId).stream()
-                .collect(Collectors.toMap(k -> k.id, k -> k.content, (a, b) -> a));
+                .collect(Collectors.toMap(k -> k.getId(), k -> k.getContent(), (a, b) -> a));
     }
 
     private QaDtos.MessageOut toMessageOut(QaMessage m, Map<Long, String> contentMap) {
         List<QaDtos.ReferencedKnowledgeOut> refs = new ArrayList<>();
-        if (m.referencedKnowledgeIds != null) {
-            for (Long kid : m.referencedKnowledgeIds) {
+        if (m.getReferencedKnowledgeIds() != null) {
+            for (Long kid : m.getReferencedKnowledgeIds()) {
                 String content = contentMap.get(kid);
                 if (content != null) {
                     // tags 恒空数组：对齐阶段二详情组装行为（ReferencedKnowledgeOut.tags 默认空列表）
@@ -346,13 +355,13 @@ public class QaService {
             }
         }
         return new QaDtos.MessageOut(
-                m.id,
-                m.question,
-                m.answer,
-                parseSources(m.searchSources),
+                m.getId(),
+                m.getQuestion(),
+                m.getAnswer(),
+                parseSources(m.getSearchSources()),
                 refs,
-                m.suggestedTags == null ? List.of() : List.of(m.suggestedTags),
-                m.createdAt);
+                m.getSuggestedTags() == null ? List.of() : List.of(m.getSuggestedTags()),
+                m.getCreatedAt());
     }
 
     /** search_sources JSONB → 对象列表；解析失败按阶段二防御行为返回空列表。 */
