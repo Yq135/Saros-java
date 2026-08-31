@@ -3,6 +3,7 @@ package com.kairon.saros.controller;
 import com.kairon.saros.common.SseEmitterHelper;
 import com.kairon.saros.dto.QaDtos;
 import com.kairon.saros.service.QaService;
+import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,11 +28,8 @@ import java.util.List;
 @RequestMapping("/api")
 public class QaController {
 
-    private final QaService qaService;
-
-    public QaController(QaService qaService) {
-        this.qaService = qaService;
-    }
+    @Resource
+    private QaService qaService;
 
     /**
      * 提问/追问（SSE 流）：事件 start（来源+引用沉淀+conversation_id）→ delta（答案增量）

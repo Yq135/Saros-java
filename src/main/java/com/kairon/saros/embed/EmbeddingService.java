@@ -1,6 +1,7 @@
 package com.kairon.saros.embed;
 
 import com.pgvector.PGvector;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 /**
@@ -9,11 +10,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmbeddingService {
 
-    private final OnnxEmbedder embedder;
-
-    public EmbeddingService(OnnxEmbedder embedder) {
-        this.embedder = embedder;
-    }
+    @Resource
+    private OnnxEmbedder embedder;
 
     public float[] encodeText(String text) {
         return embedder.encodeText(text);

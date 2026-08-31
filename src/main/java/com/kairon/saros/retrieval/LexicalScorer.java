@@ -1,6 +1,7 @@
 package com.kairon.saros.retrieval;
 
 import com.huaban.analysis.jieba.JiebaSegmenter;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -13,11 +14,8 @@ import java.util.stream.Collectors;
 @Component
 public class LexicalScorer {
 
-    private final JiebaSegmenter segmenter;
-
-    public LexicalScorer(JiebaSegmenter segmenter) {
-        this.segmenter = segmenter;
-    }
+    @Resource
+    private JiebaSegmenter segmenter;
 
     /** jieba lcut + 词长 ≥ 2 过滤（对齐 Python len(w.strip()) &gt;= 2）。 */
     public Set<String> tokens(String text) {

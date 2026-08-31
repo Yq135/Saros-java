@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kairon.saros.config.SarosProperties;
 import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.nio.LongBuffer;
@@ -24,7 +25,9 @@ import java.util.Map;
 @Component
 public class OnnxEmbedder {
 
-    private final Path modelDir;
+    @Resource
+    private SarosProperties props;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final Object lock = new Object();
@@ -34,8 +37,8 @@ public class OnnxEmbedder {
     private BertWordPieceTokenizer tokenizer;
     private String queryPrefix = "";
 
-    public OnnxEmbedder(SarosProperties props) {
-        this.modelDir = Path.of(props.getEmbedding().getPath());
+    private Path modelDir() {
+        return Path.of(props.getEmbedding().getPath());
     }
 
     /** 分词（含 [CLS]/[SEP] 与截断）；供对齐测试逐 token 断言，与嵌入走完全相同的分词路径。 */
@@ -78,9 +81,9 @@ public class OnnxEmbedder {
             if (initialized) {
                 return;
             }
-            Path onnx = modelDir.resolve("model.onnx");
-            Path vocab = modelDir.resolve("vocab.txt");
-            Path calib = modelDir.resolve("calibration.json");
+            Path onnx = modelDir().resolve("model.onnx");
+            Path vocab = modelDir().resolve("vocab.txt");
+            Path calib = modelDir().resolve("calibration.json");
             if (!Files.exists(onnx) || !Files.exists(vocab)) {
                 throw new IllegalStateException(
                         "嵌入模型缺失：" + onnx + " / " + vocab + "（运行 scripts/export_bge_onnx.py 导出）");

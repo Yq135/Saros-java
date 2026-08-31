@@ -19,9 +19,11 @@ import java.time.Duration;
 @Configuration
 public class LlmConfig {
 
-    /** 非流式模型：结构化输出（出题/推荐标签）与 AgentGuard 兜底合成。 */
+    /** 非流式模型：结构化输出（出题/推荐标签）与 AgentGuard 兜底合成。
+     *  bean 名刻意取 openAiChatModel：避免与 @Resource 字段名（如 TagSuggester.chatModel）
+     *  撞名——@Resource 名字优先解析，撞名会让测试的 @Primary 假模型失效。 */
     @Bean
-    ChatModel chatModel(SarosProperties props) {
+    ChatModel openAiChatModel(SarosProperties props) {
         return OpenAiChatModel.builder()
                 .baseUrl(props.getLlm().getBaseUrl())
                 .apiKey(props.getLlm().getApiKey())
@@ -32,9 +34,9 @@ public class LlmConfig {
                 .build();
     }
 
-    /** 流式模型：SSE 答案流 + QA Agent 工具调用（J2 起用）。 */
+    /** 流式模型：SSE 答案流 + QA Agent 工具调用（J2 起用）。bean 命名同上理由。 */
     @Bean
-    StreamingChatModel streamingChatModel(SarosProperties props) {
+    StreamingChatModel openAiStreamingChatModel(SarosProperties props) {
         return OpenAiStreamingChatModel.builder()
                 .baseUrl(props.getLlm().getBaseUrl())
                 .apiKey(props.getLlm().getApiKey())

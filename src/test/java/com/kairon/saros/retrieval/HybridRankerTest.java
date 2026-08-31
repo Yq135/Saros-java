@@ -2,6 +2,7 @@ package com.kairon.saros.retrieval;
 
 import com.huaban.analysis.jieba.JiebaSegmenter;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Set;
@@ -15,9 +16,17 @@ import static org.assertj.core.api.Assertions.within;
  */
 class HybridRankerTest {
 
-    private final LexicalScorer lexical = new LexicalScorer(new JiebaSegmenter());
-    private final TagScorer tagScorer = new TagScorer(lexical);
-    private final HybridRanker ranker = new HybridRanker(lexical, tagScorer);
+    // 单测不启 Spring 容器：无参构造 + ReflectionTestUtils 注入 @Resource 依赖
+    private final LexicalScorer lexical = new LexicalScorer();
+    private final TagScorer tagScorer = new TagScorer();
+    private final HybridRanker ranker = new HybridRanker();
+
+    {
+        ReflectionTestUtils.setField(lexical, "segmenter", new JiebaSegmenter());
+        ReflectionTestUtils.setField(tagScorer, "lexical", lexical);
+        ReflectionTestUtils.setField(ranker, "lexical", lexical);
+        ReflectionTestUtils.setField(ranker, "tagScorer", tagScorer);
+    }
 
     @Test
     void tokensKeepOnlyWordsOfLengthAtLeastTwo() {

@@ -4,6 +4,7 @@ import com.kairon.saros.retrieval.HybridRetriever;
 import com.kairon.saros.search.SearchFacade;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,17 +16,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class QaAgentFactory {
 
-    private final StreamingChatModel streamingModel;
-    private final SearchFacade searchFacade;
-    private final HybridRetriever retriever;
+    @Resource
+    private StreamingChatModel streamingModel;
 
-    public QaAgentFactory(StreamingChatModel streamingModel,
-                          SearchFacade searchFacade,
-                          HybridRetriever retriever) {
-        this.streamingModel = streamingModel;
-        this.searchFacade = searchFacade;
-        this.retriever = retriever;
-    }
+    @Resource
+    private SearchFacade searchFacade;
+
+    @Resource
+    private HybridRetriever retriever;
 
     public QaAgent create(String systemMessage, QaRunContext ctx) {
         return AiServices.builder(QaAgent.class)

@@ -119,8 +119,8 @@ class QaAgentIntegrationTest {
 
         @Bean
         @Primary
-        QaAgentFactory fakeQaAgentFactory(ScriptedAgent scripted, SearchFacade sf, HybridRetriever hr) {
-            return new QaAgentFactory(null, sf, hr) {
+        QaAgentFactory fakeQaAgentFactory(ScriptedAgent scripted) {
+            return new QaAgentFactory() {
                 @Override
                 public QaAgent create(String systemMessage, QaRunContext ctx) {
                     return scripted.agent(systemMessage);

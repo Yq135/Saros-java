@@ -1,5 +1,6 @@
 package com.kairon.saros.retrieval;
 
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -12,11 +13,8 @@ import java.util.Set;
 @Component
 public class TagScorer {
 
-    private final LexicalScorer lexical;
-
-    public TagScorer(LexicalScorer lexical) {
-        this.lexical = lexical;
-    }
+    @Resource
+    private LexicalScorer lexical;
 
     public double tagHit(Set<String> tokens, List<String> tagNames) {
         if (tokens.isEmpty() || tagNames == null || tagNames.isEmpty()) {

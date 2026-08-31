@@ -2,6 +2,7 @@ package com.kairon.saros.service;
 
 import com.kairon.saros.mapper.UserMapper;
 import com.kairon.saros.po.User;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,13 +15,10 @@ public class UserService {
     /** 与阶段二 db.DEFAULT_USERNAME 一致 */
     static final String DEFAULT_USERNAME = "saros";
 
-    private final UserMapper userMapper;
+    @Resource
+    private UserMapper userMapper;
 
     private volatile Long userId;
-
-    public UserService(UserMapper userMapper) {
-        this.userMapper = userMapper;
-    }
 
     public long getUserId() {
         Long id = userId;

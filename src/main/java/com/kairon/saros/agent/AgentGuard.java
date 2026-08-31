@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -37,15 +38,14 @@ public class AgentGuard {
 
     private static final long STREAM_TIMEOUT_SECONDS = 300;
 
-    private final SearchFacade searchFacade;
-    private final HybridRetriever retriever;
-    private final StreamingChatModel streamingModel;
+    @Resource
+    private SearchFacade searchFacade;
 
-    public AgentGuard(SearchFacade searchFacade, HybridRetriever retriever, StreamingChatModel streamingModel) {
-        this.searchFacade = searchFacade;
-        this.retriever = retriever;
-        this.streamingModel = streamingModel;
-    }
+    @Resource
+    private HybridRetriever retriever;
+
+    @Resource
+    private StreamingChatModel streamingModel;
 
     public boolean isCompliant(QaRunContext ctx) {
         return ctx.bothToolsCalled() && !ctx.endedWithToolRequest;

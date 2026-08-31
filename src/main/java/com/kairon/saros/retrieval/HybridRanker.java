@@ -1,5 +1,6 @@
 package com.kairon.saros.retrieval;
 
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,13 +19,11 @@ public class HybridRanker {
     /** 低于该阈值不引沉淀（避免噪音）。 */
     static final double SCORE_THRESHOLD = 0.35;
 
-    private final LexicalScorer lexical;
-    private final TagScorer tagScorer;
+    @Resource
+    private LexicalScorer lexical;
 
-    public HybridRanker(LexicalScorer lexical, TagScorer tagScorer) {
-        this.lexical = lexical;
-        this.tagScorer = tagScorer;
-    }
+    @Resource
+    private TagScorer tagScorer;
 
     public Set<String> tokens(String question) {
         return lexical.tokens(question);

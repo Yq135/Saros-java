@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,11 +23,8 @@ public class TagSuggester {
 
     private static final Logger log = LoggerFactory.getLogger(TagSuggester.class);
 
-    private final ChatModel chatModel;
-
-    public TagSuggester(ChatModel chatModel) {
-        this.chatModel = chatModel;
-    }
+    @Resource
+    private ChatModel chatModel;
 
     public List<String> suggest(String question, String answer) {
         try {

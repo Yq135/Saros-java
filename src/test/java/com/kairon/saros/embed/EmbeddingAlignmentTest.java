@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kairon.saros.config.SarosProperties;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -35,7 +36,9 @@ class EmbeddingAlignmentTest {
 
         SarosProperties props = new SarosProperties();
         props.getEmbedding().setPath(MODEL_DIR.toString());
-        OnnxEmbedder embedder = new OnnxEmbedder(props);
+        // 单测不启 Spring 容器：无参构造 + ReflectionTestUtils 注入 @Resource 依赖
+        OnnxEmbedder embedder = new OnnxEmbedder();
+        ReflectionTestUtils.setField(embedder, "props", props);
 
         int checked = 0;
         for (JsonNode sample : calib.path("doc_samples")) {

@@ -9,6 +9,7 @@ import com.kairon.saros.mapper.TagMapper;
 import com.kairon.saros.po.KnnHit;
 import com.kairon.saros.po.ManualKnowledge;
 import com.kairon.saros.po.Tag;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,21 +38,20 @@ public class KnowledgeService {
     private static final int MAX_TAG_LEN = 100;
     private static final int MAX_QUERY_LEN = 2000;
 
-    private final ManualKnowledgeMapper manualKnowledgeMapper;
-    private final TagMapper tagMapper;
-    private final EmbeddingMapper embeddingMapper;
-    private final UserService userService;
-    private final EmbeddingService embeddingService;
+    @Resource
+    private ManualKnowledgeMapper manualKnowledgeMapper;
 
-    public KnowledgeService(ManualKnowledgeMapper manualKnowledgeMapper, TagMapper tagMapper,
-                            EmbeddingMapper embeddingMapper, UserService userService,
-                            EmbeddingService embeddingService) {
-        this.manualKnowledgeMapper = manualKnowledgeMapper;
-        this.tagMapper = tagMapper;
-        this.embeddingMapper = embeddingMapper;
-        this.userService = userService;
-        this.embeddingService = embeddingService;
-    }
+    @Resource
+    private TagMapper tagMapper;
+
+    @Resource
+    private EmbeddingMapper embeddingMapper;
+
+    @Resource
+    private UserService userService;
+
+    @Resource
+    private EmbeddingService embeddingService;
 
     @Transactional
     public Out create(CreateRequest req) {

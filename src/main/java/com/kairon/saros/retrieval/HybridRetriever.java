@@ -5,6 +5,7 @@ import com.kairon.saros.mapper.EmbeddingMapper;
 import com.kairon.saros.mapper.ManualKnowledgeMapper;
 import com.kairon.saros.mapper.TagMapper;
 import com.kairon.saros.po.KnnHit;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -29,23 +30,20 @@ public class HybridRetriever {
     /** 引用沉淀条数上限（对齐阶段二 KNOWLEDGE_TOP）。 */
     public static final int KNOWLEDGE_TOP = 5;
 
-    private final EmbeddingMapper embeddingMapper;
-    private final EmbeddingService embeddingService;
-    private final ManualKnowledgeMapper knowledgeMapper;
-    private final TagMapper tagMapper;
-    private final HybridRanker ranker;
+    @Resource
+    private EmbeddingMapper embeddingMapper;
 
-    public HybridRetriever(EmbeddingMapper embeddingMapper,
-                           EmbeddingService embeddingService,
-                           ManualKnowledgeMapper knowledgeMapper,
-                           TagMapper tagMapper,
-                           HybridRanker ranker) {
-        this.embeddingMapper = embeddingMapper;
-        this.embeddingService = embeddingService;
-        this.knowledgeMapper = knowledgeMapper;
-        this.tagMapper = tagMapper;
-        this.ranker = ranker;
-    }
+    @Resource
+    private EmbeddingService embeddingService;
+
+    @Resource
+    private ManualKnowledgeMapper knowledgeMapper;
+
+    @Resource
+    private TagMapper tagMapper;
+
+    @Resource
+    private HybridRanker ranker;
 
     public List<KnowledgeHit> retrieve(String question, long userId, int topN) {
         List<KnnHit> candidates = embeddingMapper.knnSearch(

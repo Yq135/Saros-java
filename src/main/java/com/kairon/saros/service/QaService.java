@@ -22,6 +22,7 @@ import com.kairon.saros.retrieval.KnowledgeHit;
 import com.kairon.saros.search.SearchFacade;
 import com.kairon.saros.search.SearchSource;
 import dev.langchain4j.service.TokenStream;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -62,38 +63,35 @@ public class QaService {
     /** 问题长度上限（对齐 QAAskRequest max_length=2000）。 */
     static final int QUESTION_MAX_LEN = 2000;
 
-    private final QaConversationMapper conversationMapper;
-    private final QaMessageMapper messageMapper;
-    private final ManualKnowledgeMapper knowledgeMapper;
-    private final UserService userService;
-    private final ObjectMapper json;
-    private final SearchFacade searchFacade;
-    private final HybridRetriever retriever;
-    private final QaAgentFactory agentFactory;
-    private final AgentGuard guard;
-    private final TagSuggester tagSuggester;
+    @Resource
+    private QaConversationMapper conversationMapper;
 
-    public QaService(QaConversationMapper conversationMapper,
-                     QaMessageMapper messageMapper,
-                     ManualKnowledgeMapper knowledgeMapper,
-                     UserService userService,
-                     ObjectMapper json,
-                     SearchFacade searchFacade,
-                     HybridRetriever retriever,
-                     QaAgentFactory agentFactory,
-                     AgentGuard guard,
-                     TagSuggester tagSuggester) {
-        this.conversationMapper = conversationMapper;
-        this.messageMapper = messageMapper;
-        this.knowledgeMapper = knowledgeMapper;
-        this.userService = userService;
-        this.json = json;
-        this.searchFacade = searchFacade;
-        this.retriever = retriever;
-        this.agentFactory = agentFactory;
-        this.guard = guard;
-        this.tagSuggester = tagSuggester;
-    }
+    @Resource
+    private QaMessageMapper messageMapper;
+
+    @Resource
+    private ManualKnowledgeMapper knowledgeMapper;
+
+    @Resource
+    private UserService userService;
+
+    @Resource
+    private ObjectMapper json;
+
+    @Resource
+    private SearchFacade searchFacade;
+
+    @Resource
+    private HybridRetriever retriever;
+
+    @Resource
+    private QaAgentFactory agentFactory;
+
+    @Resource
+    private AgentGuard guard;
+
+    @Resource
+    private TagSuggester tagSuggester;
 
     /**
      * 请求级校验（SSE 建立前，422 普通 JSON）：

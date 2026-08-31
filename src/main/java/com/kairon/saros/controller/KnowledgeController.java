@@ -1,6 +1,7 @@
 package com.kairon.saros.controller;
 
 import com.kairon.saros.service.KnowledgeService;
+import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,11 +31,8 @@ import static com.kairon.saros.dto.KnowledgeDtos.UpdateRequest;
 @RequestMapping("/api")
 public class KnowledgeController {
 
-    private final KnowledgeService service;
-
-    public KnowledgeController(KnowledgeService service) {
-        this.service = service;
-    }
+    @Resource
+    private KnowledgeService service;
 
     @PostMapping("/knowledge")
     @ResponseStatus(HttpStatus.CREATED)

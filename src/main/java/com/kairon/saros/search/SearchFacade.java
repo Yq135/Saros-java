@@ -1,9 +1,10 @@
 package com.kairon.saros.search;
 
 import com.kairon.saros.config.SarosProperties;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -23,18 +24,22 @@ public class SearchFacade {
 
     private static final Logger log = LoggerFactory.getLogger(SearchFacade.class);
 
-    private final List<SearchProvider> providers;
+    @Resource
+    private SarosProperties props;
 
-    @Autowired
-    public SearchFacade(SarosProperties props) {
-        this(Arrays.stream(props.getSearchProviders().split(","))
+    private List<SearchProvider> providers = List.of();
+
+    /** 按配置装配搜索源（@Resource 注入完成后执行）。 */
+    @PostConstruct
+    void init() {
+        this.providers = Arrays.stream(props.getSearchProviders().split(","))
                 .map(String::strip)
                 .map(SearchFacade::createProvider)
                 .filter(Objects::nonNull)
-                .toList());
+                .toList();
     }
 
-    /** 测试接缝：直接注入假源（同包单测用）。 */
+    /** 测试接缝：直接注入假源（同包单测用，不经 Spring 生命周期）。 */
     SearchFacade(List<SearchProvider> providers) {
         this.providers = List.copyOf(providers);
     }
