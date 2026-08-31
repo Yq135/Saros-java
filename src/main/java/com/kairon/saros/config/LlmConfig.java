@@ -39,6 +39,9 @@ public class LlmConfig {
                 .baseUrl(props.getLlm().getBaseUrl())
                 .apiKey(props.getLlm().getApiKey())
                 .modelName(props.getLlm().getModel())
+                // 对齐阶段二 llm.stream_chat：temperature 0.7 / max_tokens 2048
+                .temperature(0.7)
+                .maxTokens(2048)
                 .timeout(Duration.ofSeconds(300))
                 // DeepSeek 每个分块返回完整 toolCallId（与 OpenAI 分块拼接行为不同），
                 // 必须关闭累积，否则 agent 工具调用流式解析出错

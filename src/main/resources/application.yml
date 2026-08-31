@@ -21,6 +21,8 @@ server:
 
 mybatis:
   mapper-locations: classpath*:mapper/*.xml
+  # PG 数组列（BIGINT[]/TEXT[]）↔ Long[]/String[] 的类型处理器（@MappedTypes 自动注册）
+  type-handlers-package: com.kairon.saros.common
   configuration:
     map-underscore-to-camel-case: true
 

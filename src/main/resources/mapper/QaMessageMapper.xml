@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kairon.saros.mapper.QaMessageMapper">
+
+    <!-- qa_messages 表 SQL 实现（Java 接口定义见 com.kairon.saros.mapper.QaMessageMapper） -->
+
+    <!-- search_sources 以 JSON 文本写入，CAST 成 JSONB（阶段二 psycopg Jsonb 语义） -->
+    <insert id="insertMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO qa_messages
+            (conversation_id, user_id, question, answer, search_sources,
+             referenced_knowledge_ids, suggested_tags)
+        VALUES
+            (#{conversationId}, #{userId}, #{question}, #{answer}, CAST(#{searchSources} AS JSONB),
+             #{referencedKnowledgeIds}, #{suggestedTags})
+    </insert>
+
+    <!-- 读时 CAST 为 TEXT，直接映射 JSON 字符串（service 层 Jackson 反序列化） -->
+    <select id="findByConversation" resultType="com.kairon.saros.po.QaMessage">
+        SELECT id, conversation_id, user_id, question, answer,
+               CAST(search_sources AS TEXT) AS search_sources,
+               referenced_knowledge_ids, suggested_tags, created_at
+        FROM qa_messages
+        WHERE conversation_id = #{conversationId} AND user_id = #{userId}
+        ORDER BY id
+    </select>
+
+    <!-- 最近 N 轮：子查询按 id DESC 取 N 条，外层按 created_at 正序（对齐阶段二 load_history） -->
+    <select id="recentHistory" resultType="com.kairon.saros.po.QaHistoryRow">
+        SELECT question, answer FROM (
+            SELECT question, answer, created_at
+            FROM qa_messages
+            WHERE conversation_id = #{conversationId} AND user_id = #{userId}
+            ORDER BY id DESC
+            LIMIT #{limit}
+        ) recent
+        ORDER BY created_at
+    </select>
+
+</mapper>

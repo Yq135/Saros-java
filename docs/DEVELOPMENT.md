@@ -32,7 +32,7 @@ src/main/resources/
 
 ## 3. 新增一个领域模块的标准流程
 
-以 J2 的 qa_sessions 为例，新增表数据访问时按以下顺序落地：
+以 J2 的 qa_conversations/qa_messages 为例，新增表数据访问时按以下顺序落地：
 
 1. **查契约**：在 `docs/openapi-phase2.json` 找对应端点，记录路径/方法/请求体字段/响应体字段/状态码/SSE 事件序列。
 2. **查表结构**：以仓库根 `db_init.sql` 为准（解读见 [数据库设计说明.md](数据库设计说明.md)）。**只写不改**——禁止 ALTER 已有表；新表如需创建，先在 db_init.sql 中补充并同步更新数据库设计说明。
@@ -155,3 +155,4 @@ PG_HOST=100.109.98.117 PG_PORT=5432 PG_USER=saros PG_PASSWORD='saros#2026!' PG_D
 | 版本 | 日期 | 说明 |
 |---|---|---|
 | v0.1 | 2026-08-30 | 初稿：J1 完成时确立 DDD 分层 + MyBatis XML 流程约定 |
+| v0.2 | 2026-08-30 | J2 完成补充：① PG 数组列用自定义 TypeHandler（BIGINT[]↔Long[]、TEXT[]↔String[]，经 JDBC Array，`mybatis.type-handlers-package` 注册，样例 common/LongArrayTypeHandler）；② JSONB↔String + Jackson 手动序列化（XML 写 `CAST(#{x} AS JSONB)`、读 `CAST(x AS TEXT)`）；③ SSE 用 SseEmitter + common/SseEmitterHelper（300s 超时），状态机类依赖 `SseEmitterHelper.Channel` 抽象以便单测（QaSseSink 样例）；④ 多构造器 bean 需在注入构造器上加 @Autowired（SearchFacade 样例）；⑤ 集成测试假件接缝：AiServices 唯一构建处（QaAgentFactory）用 @TestConfiguration @Primary 覆盖、@MockitoBean 打桩外部依赖、包私有测试构造器注入假源（SearchFacade 样例） |

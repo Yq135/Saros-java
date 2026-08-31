@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kairon.saros.mapper.QaConversationMapper">
+
+    <!-- qa_conversations 表 SQL 实现（Java 接口定义见 com.kairon.saros.mapper.QaConversationMapper） -->
+
+    <insert id="insertConversation" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO qa_conversations (user_id, title)
+        VALUES (#{userId}, #{title})
+    </insert>
+
+    <select id="findById" resultType="com.kairon.saros.po.QaConversation">
+        SELECT id, user_id, title, created_at, updated_at
+        FROM qa_conversations
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM qa_conversations WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <!-- 只删没有轮次的会话（流失败/中断清理；NOT EXISTS 语义对齐阶段二 delete_conversation_if_empty） -->
+    <delete id="deleteIfEmpty">
+        DELETE FROM qa_conversations
+        WHERE id = #{id} AND user_id = #{userId}
+          AND NOT EXISTS (SELECT 1 FROM qa_messages WHERE conversation_id = #{id})
+    </delete>
+
+    <!-- 列表语义对齐阶段二 qa.py：INNER JOIN 轮次、COUNT=轮次数、MAX(created_at)=最近活跃、
+         关键词 ILIKE 匹配标题或任意轮次问题/答案，最近活跃倒序，LIMIT 100 -->
+    <select id="listWithCount" resultType="com.kairon.saros.po.QaConversationListItem">
+        SELECT c.id, c.title, COUNT(m.id) AS message_count, c.created_at, MAX(m.created_at) AS last_active
+        FROM qa_conversations c
+        JOIN qa_messages m ON m.conversation_id = c.id
+        WHERE c.user_id = #{userId}
+        <if test="qPattern != null">
+            AND (c.title ILIKE #{qPattern}
+                 OR EXISTS (SELECT 1 FROM qa_messages m2
+                            WHERE m2.conversation_id = c.id
+                              AND (m2.question ILIKE #{qPattern} OR m2.answer ILIKE #{qPattern})))
+        </if>
+        GROUP BY c.id
+        ORDER BY MAX(m.created_at) DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
